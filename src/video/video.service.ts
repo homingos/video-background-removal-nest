@@ -112,7 +112,7 @@ export class VideoService {
             const maskFilename = path.basename(result.maskPath);
             const resultFilename = path.basename(result.resultPath);
 
-            const port = this.configService.get<string>('PORT') ?? '5173';
+            const port = this.configService.get<string>('PORT') ?? '3000';
             const host = baseUrl ?? `http://localhost:${port}`;
 
             const response: ProcessVideoResponseDto = {
