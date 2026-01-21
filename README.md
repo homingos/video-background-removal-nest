@@ -28,7 +28,7 @@ npm install
 Copy `.env.example` to `.env` and configure:
 
 ```env
-PORT=5173
+PORT=3000
 FFMPEG_PATH=ffmpeg
 MAX_FILE_SIZE=524288000
 OUTPUT_DIR=public/outputs
@@ -110,8 +110,6 @@ Server starts at `http://localhost:5173`
 curl -X POST http://localhost:5173/api/v1/video/remove-background \
   -F "video=@video.mp4" \
   -F "colorType=green" \
-  -F "similarity=0.3" \
-  -F "blend=0.1"
 ```
 
 #### Video URL (JSON)
@@ -122,8 +120,6 @@ curl -X POST http://localhost:5173/api/v1/video/remove-background \
   -d '{
     "videoUrl": "https://s3.amazonaws.com/bucket/video.mp4",
     "colorType": "green",
-    "similarity": 0.3,
-    "blend": 0.15
   }'
 ```
 
