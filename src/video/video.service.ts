@@ -70,11 +70,29 @@ export class VideoService {
                 );
             }
 
+            // Auto-detect chroma key color if requested
+            let detectedColor: string | undefined;
+            if (dto.autoDetectColor) {
+                const detected = await this.ffmpegService.findDominantChromaColor(
+                    inputPath,
+                    dto.colorType,
+                );
+                if (detected) {
+                    detectedColor = detected;
+                    this.logger.log(`Using auto-detected color: #${detectedColor}`);
+                }
+            }
+
             // Build settings for result (transparent) video - only override what's provided
             const resultSettings: Partial<ChromaKeySettings> = {};
-            if (dto.color) {
+
+            // Priority: auto-detected color > user-provided color > default
+            if (detectedColor) {
+                resultSettings.color = detectedColor;
+            } else if (dto.color) {
                 resultSettings.color = dto.color.toUpperCase();
             }
+
             if (dto.similarity !== undefined) {
                 resultSettings.similarity = dto.similarity;
             }
@@ -85,9 +103,14 @@ export class VideoService {
             // Build settings for mask video - INDEPENDENT from result settings
             // Uses its own defaults unless mask_* params are explicitly provided
             const maskSettings: Partial<ChromaKeySettings> = {};
-            if (dto.color) {
+
+            // Priority: auto-detected color > user-provided color > default
+            if (detectedColor) {
+                maskSettings.color = detectedColor;
+            } else if (dto.color) {
                 maskSettings.color = dto.color.toUpperCase();
             }
+
             if (dto.mask_similarity !== undefined) {
                 maskSettings.similarity = dto.mask_similarity;
             }

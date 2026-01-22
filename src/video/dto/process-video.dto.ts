@@ -2,6 +2,7 @@ import {
     IsString,
     IsOptional,
     IsNumber,
+    IsBoolean,
     Min,
     Max,
     IsIn,
@@ -19,6 +20,12 @@ export class ProcessVideoDto {
     @IsNotEmpty({ message: 'colorType is required' })
     @IsIn(['green', 'blue'], { message: 'colorType must be "green" or "blue"' })
     colorType: 'green' | 'blue';
+
+    /** If true, automatically detect the chroma key color from video frames */
+    @IsOptional()
+    @IsBoolean()
+    @Type(() => Boolean)
+    autoDetectColor?: boolean;
 
     @IsOptional()
     @IsString()

@@ -12,12 +12,30 @@ export interface ChromaKeySettings {
 }
 
 /**
+ * RGB color representation
+ */
+export interface RGB {
+    r: number;
+    g: number;
+    b: number;
+}
+
+/**
+ * Convert RGB to hex string (without #)
+ */
+export function rgbToHex(rgb: RGB): string {
+    const toHex = (n: number) => Math.min(255, Math.max(0, n)).toString(16).padStart(2, '0');
+    return `${toHex(rgb.r)}${toHex(rgb.g)}${toHex(rgb.b)}`.toUpperCase();
+}
+
+/**
  * Default settings for green screen
+ * Lower similarity = more precise, avoids green spill on clothes
  */
 export const GREEN_SCREEN_SETTINGS: ChromaKeySettings = {
     color: '00FF00',
-    similarity: 0.25,
-    blend: 0.1,
+    similarity: 0.01,
+    blend: 0.08,
 };
 
 /**
