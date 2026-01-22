@@ -1,5 +1,5 @@
 """
-Video Background Removal API - Modal Deployment
+Video Background Removal API - Modal Deployment (FIXED)
 Converts NestJS video background removal service to Modal serverless deployment
 """
 
@@ -11,7 +11,7 @@ import uuid
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 import modal
 
@@ -57,6 +57,18 @@ SCALEDOWN_WINDOW = 300  # 5 minutes
 # ============================================================================
 
 @dataclass
+class RGB:
+    """RGB color representation"""
+    r: int
+    g: int
+    b: int
+    
+    def to_hex(self) -> str:
+        """Convert to hex string (without #)"""
+        return f"{self.r:02X}{self.g:02X}{self.b:02X}"
+
+
+@dataclass
 class ChromaKeySettings:
     """Configuration for FFmpeg chromakey filter"""
     color: str  # Hex color to remove (e.g., '00FF00' for green)
@@ -71,7 +83,7 @@ class ProcessedVideoResult:
     result_path: str
 
 
-# Default settings (updated for better precision)
+# Default settings (matching NestJS exactly)
 GREEN_SCREEN_SETTINGS = ChromaKeySettings(
     color="00FF00",
     similarity=0.01,  # Lower similarity = more precise, avoids green spill
@@ -185,22 +197,22 @@ def extract_raw_frame_data(input_path: str, percentage: float) -> bytes:
     return result.stdout
 
 
-def analyze_frame_colors(frame_bytes: bytes, color_type: str) -> Optional[tuple[int, int, int]]:
+def analyze_frame_colors(frame_bytes: bytes, color_type: str) -> Optional[RGB]:
     """
-    Analyze raw RG bytes to find the dominant green or blue color
+    Analyze raw RGB bytes to find the dominant green or blue color
+    FIXED: Corrected filtering logic to match NestJS implementation
     
     Args:
         frame_bytes: Raw RGB bytes
-        color_type: Whether to look for green or blue - used to filter relevant colors
+        color_type: Whether to look for green or blue
     
     Returns:
-        RGB tuple of the most dominant matching color or None
+        RGB object of the most dominant matching color or None
     """
-    color_map = defaultdict(int)
+    color_map: Dict[Tuple[int, int, int], int] = defaultdict(int)
     quantize_factor = 8  # Group similar colors
     
     # Iterate through bytes in groups of 3 (R, G, B)
-    # Note: len(frame_bytes) should be divisible by 3
     for i in range(0, len(frame_bytes), 3):
         if i + 2 >= len(frame_bytes):
             break
@@ -217,14 +229,17 @@ def analyze_frame_colors(frame_bytes: bytes, color_type: str) -> Optional[tuple[
         if r > 240 and g > 240 and b > 240:
             continue
         
-        # Filter for expected color type to avoid detecting subject colors
+        # Filter for specific color dominance - FIXED LOGIC
+        # This now matches the NestJS implementation exactly
         if color_type == "green":
-            # Only count green-ish colors (green channel is dominant)
-            if not (g > r and g > b and g > 50):
+            # Green must be the dominant channel
+            # Skip if green is NOT greater than both red AND blue
+            if g <= r or g <= b:
                 continue
         elif color_type == "blue":
-            # Only count blue-ish colors (blue channel is dominant)
-            if not (b > r and b > g and b > 50):
+            # Blue must be the dominant channel
+            # Skip if blue is NOT greater than both red AND green
+            if b <= r or b <= g:
                 continue
         
         # Quantize colors to group similar ones
@@ -238,8 +253,8 @@ def analyze_frame_colors(frame_bytes: bytes, color_type: str) -> Optional[tuple[
         return None
     
     # Get the most frequent matching color
-    dominant_color = max(color_map.items(), key=lambda x: x[1])[0]
-    return dominant_color
+    dominant_color_tuple = max(color_map.items(), key=lambda x: x[1])[0]
+    return RGB(r=dominant_color_tuple[0], g=dominant_color_tuple[1], b=dominant_color_tuple[2])
 
 
 def find_dominant_chroma_color(input_path: str, color_type: str) -> Optional[str]:
@@ -256,17 +271,17 @@ def find_dominant_chroma_color(input_path: str, color_type: str) -> Optional[str
     """
     print(f"Auto-detecting {color_type} screen color from video...")
     
-    color_counts = defaultdict(int)
+    color_counts: Dict[str, int] = defaultdict(int)
     
     try:
-        # Sample frames at 5%, 25%, and 50% of video
+        # Sample frames at 5%, 25%, and 50% of video (matching NestJS)
         for percentage in [5, 25, 50]:
             try:
                 frame_bytes = extract_raw_frame_data(input_path, percentage)
                 
                 rgb = analyze_frame_colors(frame_bytes, color_type)
                 if rgb:
-                    hex_color = f"{rgb[0]:02X}{rgb[1]:02X}{rgb[2]:02X}"
+                    hex_color = rgb.to_hex()
                     color_counts[hex_color] += 1
                     print(f"Frame at {percentage}%: detected #{hex_color}")
             except Exception as e:
@@ -677,10 +692,6 @@ async def process_video_background_removal(
         }
 
 
-# Note: Signed URL generation is now handled by the internal API
-# The get_signed_url_from_api() function is used for uploads
-
-
 # ============================================================================
 # FastAPI Web Interface
 # ============================================================================
@@ -894,12 +905,12 @@ def fastapi_app():
 @app.local_entrypoint()
 def main():
     """Local testing entrypoint"""
-    print("Video Background Removal API - Modal Deployment")
+    print("Video Background Removal API - Modal Deployment (FIXED)")
     print("=" * 60)
     print("\nTo deploy this app, run:")
-    print("  modal deploy modal_app.py")
+    print("  modal deploy modal_app_fixed.py")
     print("\nTo test locally:")
-    print("  modal serve modal_app.py")
+    print("  modal serve modal_app_fixed.py")
     print("\nExample API call:")
     print('  curl -X POST https://your-app.modal.run/api/v1/video/remove-background \\')
     print('    -F "video=@video.mp4" \\')
