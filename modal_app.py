@@ -308,7 +308,7 @@ def process_chroma_key(
     result_settings: Optional[Dict[str, Any]] = None,
     mask_settings: Optional[Dict[str, Any]] = None,
     session_id: Optional[str] = None,
-    auto_detect_color: bool = False
+    auto_detect_color: bool = True
 ) -> ProcessedVideoResult:
     """
     Process video to remove chroma key color
@@ -316,7 +316,7 @@ def process_chroma_key(
     Supports automatic color detection
     """
     detected_color = None
-    
+    print(f"Auto-detect color: {auto_detect_color}")
     # Auto-detect chroma key color if requested
     if auto_detect_color:
         detected_color = find_dominant_chroma_color(input_path, color_type)
@@ -344,8 +344,8 @@ def process_chroma_key(
     mask_chroma_settings = get_settings(color_type, mask_settings)
     
     session_id = session_id or str(uuid.uuid4())
-    mask_output = os.path.join(output_dir, f"{session_id}_mask.webm")
-    result_output = os.path.join(output_dir, f"{session_id}_result.webm")
+    mask_output = os.path.join(output_dir, f"{session_id}_mask.mp4")
+    result_output = os.path.join(output_dir, f"{session_id}_result.mp4")
     
     # Ensure output directory exists
     os.makedirs(output_dir, exist_ok=True)
@@ -364,31 +364,32 @@ def process_chroma_key(
     print(f"Processing video - Mask settings: {mask_chroma_settings}")
     print(f"Processing video - Result settings: {result_chroma_settings}")
     
-    # Generate mask video
+    # Generate mask video (MP4 format with H.264)
     print("Generating mask...")
     run_ffmpeg_command([
         "-i", input_path,
         "-vf", f"{mask_chromakey_filter},format=yuva420p,alphaextract,geq=lum='if(gt(lum(X,Y),128),255,0)',format=yuv420p",
-        "-c:v", "libvpx",
-        "-crf", "30",
-        "-b:v", "1M",
+        "-c:v", "libx264",
+        "-preset", "medium",
+        "-crf", "23",
+        "-pix_fmt", "yuv420p",
         "-an",
         "-y",
         mask_output,
     ])
     print("Mask generated")
     
-    # Generate result video with improved filter (black background + overlay)
+    # Generate result video with black background (MP4 format with H.264)
     print("Removing background...")
     run_ffmpeg_command([
         "-i", input_path,
         "-vf", f"split[bg][fg];[bg]drawbox=c=black:t=fill[bg2];[fg]{result_chromakey_filter}[fg2];[bg2][fg2]overlay=format=auto",
-        "-c:v", "libvpx",
-        "-pix_fmt", "yuva420p",
-        "-auto-alt-ref", "0",
-        "-crf", "30",
-        "-b:v", "2M",
-        "-c:a", "libvorbis",
+        "-c:v", "libx264",
+        "-preset", "medium",
+        "-crf", "23",
+        "-pix_fmt", "yuv420p",
+        "-c:a", "aac",
+        "-b:a", "128k",
         "-y",
         result_output,
     ])
@@ -593,7 +594,7 @@ async def process_video_background_removal(
     blend: Optional[float] = None,
     mask_similarity: Optional[float] = None,
     mask_blend: Optional[float] = None,
-    auto_detect_color: bool = False,
+    auto_detect_color: bool = True,
 ) -> Dict[str, Any]:
     """
     Process video to remove background
