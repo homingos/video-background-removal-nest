@@ -1,0 +1,15 @@
+# Modal deployment requirements
+# These are installed in the Modal container image
+
+# Core dependencies
+modal>=0.63.0
+
+# Web framework
+fastapi[standard]>=0.109.0
+pydantic>=2.5.0
+python-multipart>=0.0.6
+
+# HTTP clients
+httpx>=0.26.0
+requests>=2.31.0  # For API calls and signed URL uploads
+
